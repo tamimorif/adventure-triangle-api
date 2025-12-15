@@ -2,65 +2,78 @@ from fastapi import FastAPI
 from contextlib import asynccontextmanager
 from typing import Any
 from sqlmodel import Session, select
-from passlib.hash import bcrypt
+import bcrypt
 
 from db import engine, create_database
-from models import User, Partner, EventRegistration, Log
+from models import User, Partner, EventRegistration, SystemLog
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Create DB tables when the app starts
     create_database()
     yield
 
 
-app = FastAPI(title="Adventure Triangle API (Intern Backend)", lifespan=lifespan)
+app = FastAPI(
+    title="Adventure Triangle API",
+    description="Backend API for Internship Assignment (Platform & CRM)",
+    version="1.0.0",
+    lifespan=lifespan,
+)
 
 
 @app.get("/")
-def health_check() -> dict[str, str]:
-    return {"status": "Backend is running"}
+def root() -> dict[str, str]:
+    return {"message": "Adventure Triangle API is running!"}
 
 
 # ---------------- USERS ----------------
-@app.post("/users/register")
-def register_user(name: str, email: str, password: str) -> dict[str, Any]:
+@app.post("/api/users/register")
+def register_user(full_name: str, email: str, password: str) -> dict[str, Any]:
+    # bcrypt hard limit: 72 bytes
+    if len(password.encode("utf-8")) > 72:
+        return {"error": "Password too long (bcrypt max is 72 bytes)"}
+
     with Session(engine) as session:
         existing = session.exec(select(User).where(User.email == email)).first()
         if existing:
             return {"error": "User already exists"}
 
-        user = User(
-            name=name,
-            email=email,
-            password=bcrypt.hash(password)  # store hashed password
-        )
+        pw_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
 
+        user = User(full_name=full_name, email=email, password_hash=pw_hash)
         session.add(user)
         session.commit()
         session.refresh(user)
 
-        return {"id": user.id, "name": user.name, "email": user.email}
+        return {"id": user.id, "full_name": user.full_name, "email": user.email}
 
 
-@app.get("/users")
+@app.get("/api/users")
 def list_users() -> list[dict[str, Any]]:
     with Session(engine) as session:
         users = session.exec(select(User)).all()
-
-        # Hide password hash in the response
         return [
-            {"id": u.id, "name": u.name, "email": u.email, "created_at": u.created_at}
+            {
+                "id": u.id,
+                "full_name": u.full_name,
+                "email": u.email,
+                "created_at": u.created_at,
+            }
             for u in users
         ]
 
 
 # ---------------- PARTNERS ----------------
-@app.post("/partners/register")
-def register_partner(company_name: str, contact_email: str) -> dict[str, Any]:
+@app.post("/api/partners/onboard")
+def onboard_partner(company_name: str, contact_email: str, phone: str, description: str) -> dict[str, Any]:
     with Session(engine) as session:
-        partner = Partner(company_name=company_name, contact_email=contact_email)
+        partner = Partner(
+            company_name=company_name,
+            contact_email=contact_email,
+            phone=phone,
+            description=description,
+        )
         session.add(partner)
         session.commit()
         session.refresh(partner)
@@ -69,11 +82,10 @@ def register_partner(company_name: str, contact_email: str) -> dict[str, Any]:
             "id": partner.id,
             "company_name": partner.company_name,
             "contact_email": partner.contact_email,
-            "created_at": partner.created_at
         }
 
 
-@app.get("/partners")
+@app.get("/api/partners")
 def list_partners() -> list[dict[str, Any]]:
     with Session(engine) as session:
         partners = session.exec(select(Partner)).all()
@@ -82,71 +94,68 @@ def list_partners() -> list[dict[str, Any]]:
                 "id": p.id,
                 "company_name": p.company_name,
                 "contact_email": p.contact_email,
-                "created_at": p.created_at
+                "phone": p.phone,
+                "description": p.description,
+                "created_at": p.created_at,
             }
             for p in partners
         ]
 
 
 # ---------------- EVENTS ----------------
-@app.post("/events/register")
-def register_event(event_name: str, attendee_email: str) -> dict[str, Any]:
+@app.post("/api/events/register")
+def register_event(event_id: str, attendee_name: str, attendee_email: str) -> dict[str, Any]:
     with Session(engine) as session:
-        event = EventRegistration(event_name=event_name, attendee_email=attendee_email)
-        session.add(event)
+        reg = EventRegistration(
+            event_id=event_id,
+            attendee_name=attendee_name,
+            attendee_email=attendee_email,
+        )
+        session.add(reg)
         session.commit()
-        session.refresh(event)
+        session.refresh(reg)
 
         return {
-            "id": event.id,
-            "event_name": event.event_name,
-            "attendee_email": event.attendee_email,
-            "created_at": event.created_at
+            "id": reg.id,
+            "event_id": reg.event_id,
+            "attendee_name": reg.attendee_name,
+            "attendee_email": reg.attendee_email,
         }
 
 
-@app.get("/events")
+@app.get("/api/events")
 def list_events() -> list[dict[str, Any]]:
     with Session(engine) as session:
         events = session.exec(select(EventRegistration)).all()
         return [
             {
                 "id": e.id,
-                "event_name": e.event_name,
+                "event_id": e.event_id,
+                "attendee_name": e.attendee_name,
                 "attendee_email": e.attendee_email,
-                "created_at": e.created_at
+                "created_at": e.created_at,
             }
             for e in events
         ]
 
 
-# ---------------- LOGGING ----------------
-@app.post("/logs")
-def create_log(source: str, message: str) -> dict[str, Any]:
+# ---------------- SYSTEM LOGGING ----------------
+@app.post("/api/system/log")
+def create_log(level: str, message: str) -> dict[str, Any]:
     with Session(engine) as session:
-        log = Log(source=source, message=message)
+        log = SystemLog(level=level, message=message)
         session.add(log)
         session.commit()
         session.refresh(log)
 
-        return {
-            "id": log.id,
-            "source": log.source,
-            "message": log.message,
-            "created_at": log.created_at
-        }
+        return {"id": log.id, "level": log.level, "message": log.message, "timestamp": log.timestamp}
 
 
-@app.get("/logs")
+@app.get("/api/system/logs")
 def list_logs() -> list[dict[str, Any]]:
     with Session(engine) as session:
-        logs = session.exec(select(Log)).all()
+        logs = session.exec(select(SystemLog)).all()
         return [
-            {
-                "id": l.id,
-                "source": l.source,
-                "message": l.message,
-                "created_at": l.created_at
-            }
+            {"id": l.id, "level": l.level, "message": l.message, "timestamp": l.timestamp}
             for l in logs
         ]

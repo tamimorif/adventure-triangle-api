@@ -1,32 +1,38 @@
 from sqlmodel import SQLModel, Field
 from typing import Optional
-from datetime import datetime, timezone
+from datetime import datetime
 
+# NOTE: SQLite is happiest with naive datetimes (no tzinfo).
+# We'll store UTC-like timestamps as naive datetime.
 def utc_now() -> datetime:
-    """Timezone-aware UTC time (avoids datetime.utcnow deprecation warnings)."""
-    return datetime.now(timezone.utc)
+    return datetime.utcnow()
+
+# ---------------- DB TABLES ----------------
 
 class User(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    name: str
-    email: str
-    password: str
+    full_name: str
+    email: str = Field(index=True)
+    password_hash: str
     created_at: datetime = Field(default_factory=utc_now)
 
 class Partner(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
     company_name: str
     contact_email: str
+    phone: str
+    description: str
     created_at: datetime = Field(default_factory=utc_now)
 
 class EventRegistration(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    event_name: str
+    event_id: str
+    attendee_name: str
     attendee_email: str
     created_at: datetime = Field(default_factory=utc_now)
 
-class Log(SQLModel, table=True):
+class SystemLog(SQLModel, table=True):
     id: Optional[int] = Field(default=None, primary_key=True)
-    source: str
+    level: str
     message: str
-    created_at: datetime = Field(default_factory=utc_now)
+    timestamp: datetime = Field(default_factory=utc_now)
