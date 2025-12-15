@@ -1,14 +1,16 @@
-# Virtual env
+# Python virtual environments
 .venv/
+venv/
 
 # Python cache
 __pycache__/
 *.pyc
 
-# macOS junk
+# Local SQLite database
+database.db
+
+# macOS system files
 .DS_Store
 
-# Local database + env
-database.db
+# Environment variables
 .env
-
