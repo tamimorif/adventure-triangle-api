@@ -2,8 +2,8 @@ from sqlmodel import SQLModel, Field
 from typing import Optional
 from datetime import datetime, timezone
 
-def utc_now():
-    """Timezone-aware UTC datetime (avoids datetime.utcnow deprecation)."""
+def utc_now() -> datetime:
+    """Timezone-aware UTC time (avoids datetime.utcnow deprecation warnings)."""
     return datetime.now(timezone.utc)
 
 class User(SQLModel, table=True):
