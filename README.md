@@ -3,24 +3,36 @@
 **Candidate:** Tamim Arif  
 **Role:** Backend / API Engineer Intern  
 
+---
+
 ## 📖 Overview
 
-This project is a simple backend API built for the Adventure Triangle pre-launch assignment.
-It supports user registration, partner onboarding, event signups, and basic logging.
+This repository contains the backend API for the Adventure Triangle pre-launch platform.
+The API supports:
 
-The goal was to build a clear, functional backend without over-engineering, suitable for an
-internship-level role.
+- User (beta) registration
+- Partner onboarding
+- Event registration
+- Basic system logging
+
+The backend was intentionally kept simple and clear, focusing on correctness and readability,
+as expected for an internship-level assignment.
+
+---
 
 ## 🛠️ Tech Stack
 
 - Python 3
 - FastAPI
 - Uvicorn
-- SQLite (via SQLModel)
-- passlib (password hashing)
+- SQLModel (SQLite database)
+- passlib + bcrypt (password hashing)
 
-## 🚀 How to Run
+---
 
-Install dependencies:
+## 🚀 How to Run Locally
+
+### 1️⃣ Clone the repository
 ```bash
-pip install -r requirements.txt
+git clone https://github.com/tamimorif/adventure-triangle-api.git
+cd adventure-triangle-api
